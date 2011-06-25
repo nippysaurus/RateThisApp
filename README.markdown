@@ -38,7 +38,7 @@ Example 1
 
 This is an example of a two button configuration.
 
-![Two Button Example](http://nippysaurus.github.com/RateThisApp/TwpoButtonExample.png "Two Button Example")
+![Two Button Example](http://nippysaurus.github.com/RateThisApp/TwoButtonExample.png "Two Button Example")
 
     // this is the link to your app in itunes
     // Please use the "iTunes Link Maker" to create this url:
