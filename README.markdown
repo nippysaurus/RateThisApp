@@ -39,7 +39,7 @@ Simply include "RateThisAppDialog.h" and "RateThisAppDialog.m" in your project. 
 
 Hopefully I have included enough comments to make it easy for you to configure. Basically, you can have two or three buttons (for three buttons you need to uncomment that "VERTICAL_LAYOUT" define). You can configure the text and action for each of the buttons (only those three actions listed are available).
 
-
+![Kinect Example](http://nippysaurus.github.com/RateThisApp/KinectExample.png "Kinect Example")
 
 When the application launches init the object like this:
 
