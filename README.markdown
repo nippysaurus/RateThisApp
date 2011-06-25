@@ -43,7 +43,7 @@ Hopefully I have included enough comments to make it easy for you to configure. 
 
 When the application launches init the object like this:
 
-[[RateThisAppDialog alloc] init];
+    [[RateThisAppDialog alloc] init];
 
 You might want to keep it referenced somewhere until later. Sorry I have not figured out a way to make this bit easier yet.
 
