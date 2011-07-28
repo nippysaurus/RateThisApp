@@ -2,27 +2,15 @@
 //  RateThisAppDialog.m
 //  RateThisApp
 //
-//  Created by Michael Dawson on 23/06/11.
+//  Created by Michael Dawson on 29/07/11.
 //  Copyright 2011 Nippysaurus. All rights reserved.
 //
 
 #import "RateThisAppDialog.h"
 
-@interface RateThisAppDialog ()
-
-+ (void)rateNow;
-
-+ (void)rateLater;
-
-+ (void)rateNever;
-
-- (void)showDialogIfRequired;
-
-@end
-
 @implementation RateThisAppDialog
 
-#pragma mark - Init
+#pragma mark - Memory Management
 
 - (id)init
 {
@@ -30,7 +18,77 @@
     
     if (self)
     {
-        [self showDialogIfRequired];
+        // rate now default
+        
+        self->_rateNowDefault = ^{
+            NSLog(@"RateThisAppDialog :: rate now");
+            
+            NSURL *url = [NSURL URLWithString:APP_STORE_LINK];
+            
+            BOOL launchSuccess = [[UIApplication sharedApplication] openURL:url];
+            
+            if(launchSuccess == NO)
+            {
+                NSLog(@"RateThisAppDialog :: Failed to open URL (this is normal in the iOS Simulator ...)");
+            }
+            
+            [[NSUserDefaults standardUserDefaults] setBool:YES forKey:@"app_rating_disabled"];
+            [[NSUserDefaults standardUserDefaults] synchronize];
+        };
+        
+        // rate later default
+        
+        self->_rateLaterDefault = ^{
+            NSLog(@"RateThisAppDialog :: rate later");
+            
+            // set back to zero
+            [[NSUserDefaults standardUserDefaults] setInteger:0 forKey:@"number_of_times_launched"];
+            [[NSUserDefaults standardUserDefaults] synchronize];
+        };
+        
+        // rate never default
+        
+        self->_rateNeverDefault = ^{
+            NSLog(@"RateThisAppDialog :: rate never");
+            
+            [[NSUserDefaults standardUserDefaults] setBool:YES forKey:@"app_rating_disabled"];
+            [[NSUserDefaults standardUserDefaults] synchronize];
+        };
+        
+        // should show dialog default
+        
+        self->_shouldShowDialogDefault = ^{
+            BOOL appRatingDisabled = [[NSUserDefaults standardUserDefaults] boolForKey:@"app_rating_disabled"];
+            
+            if (appRatingDisabled == YES)
+            {
+                NSLog(@"RateThisAppDialog :: app_rating_disabled = YES");
+                return NO;
+            }
+            
+            // if this user default has not been set then it will be zero
+            NSInteger numberOfTimesLaunched = [[NSUserDefaults standardUserDefaults] integerForKey:@"number_of_times_launched"] + 1;
+            
+            NSLog(@"RateThisAppDialog :: number of times launched = %d / %d", numberOfTimesLaunched, PROMPT_AFTER_X_LAUNCHES);
+            
+            BOOL result = numberOfTimesLaunched >= PROMPT_AFTER_X_LAUNCHES;
+            
+            NSLog(@"RateThisAppDialog :: should show dialog = %@", (result == YES ? @"YES" : @"NO"));
+            
+            // disable now so that if the user closes the app without making a selection, they will not
+            // be prompted again immediately after opening it again. they will not be prompted ever again
+            // but this might be better than trying to pedict what they might be thinking. after all this
+            // if just a friendly reminder convenience thing, not a bridge that the user must be forced
+            // to cross before continuing to use the app.
+            if (result == YES)
+                [[NSUserDefaults standardUserDefaults] setBool:YES forKey:@"app_rating_disabled"];
+            
+            // update the launch tally
+            [[NSUserDefaults standardUserDefaults] setInteger:numberOfTimesLaunched forKey:@"number_of_times_launched"];
+            [[NSUserDefaults standardUserDefaults] synchronize];
+            
+            return result;
+        };
     }
     
     return self;
@@ -40,120 +98,101 @@
 
 - (void)alertView:(UIAlertView*)actionSheet clickedButtonAtIndex:(NSInteger)buttonIndex
 {
-    // TODO make this a bit tidier
+    NSLog(@"RateThisAppDialog :: clicked button index %d", buttonIndex);
+    
     if (buttonIndex == 0)
     {
-        if ([ALERT_BUTTON_1_ACTION isEqualToString:@"RATE_NOW"] == YES)
-            [RateThisAppDialog rateNow];
-        if ([ALERT_BUTTON_1_ACTION isEqualToString:@"RATE_LATER"] == YES)
-            [RateThisAppDialog rateLater];
-        if ([ALERT_BUTTON_1_ACTION isEqualToString:@"RATE_NEVER"] == YES)
-            [RateThisAppDialog rateNever];
+        self->alertViewIndexOne();
     }
     if (buttonIndex == 1)
     {
-        if ([ALERT_BUTTON_2_ACTION isEqualToString:@"RATE_NOW"] == YES)
-            [RateThisAppDialog rateNow];
-        if ([ALERT_BUTTON_2_ACTION isEqualToString:@"RATE_LATER"] == YES)
-            [RateThisAppDialog rateLater];
-        if ([ALERT_BUTTON_2_ACTION isEqualToString:@"RATE_NEVER"] == YES)
-            [RateThisAppDialog rateNever];
+        self->alertViewIndexTwo();
     }
     if (buttonIndex == 2)
     {
-        if ([ALERT_BUTTON_2_ACTION isEqualToString:@"RATE_NOW"] == YES)
-            [RateThisAppDialog rateNow];
-        if ([ALERT_BUTTON_2_ACTION isEqualToString:@"RATE_LATER"] == YES)
-            [RateThisAppDialog rateLater];
-        if ([ALERT_BUTTON_2_ACTION isEqualToString:@"RATE_NEVER"] == YES)
-            [RateThisAppDialog rateNever];
+        self->alertViewIndexThree();
     }
+    
+    // i dont think its good practise for an object to release itself, but
+    // this needs to be done in this situation, until i can figure out a
+    // better way to structure this whole solution.
+    [self release];
 }
 
-#pragma mark - Actions
+#pragma mark - Access Methods
 
-- (void)showDialogIfRequired
++ (void)threeButtonLayoutWithTitle:(NSString*)title
+                           message:(NSString*)message
+                 rateNowButtonText:(NSString*)rateNowButtonText
+               rateLaterButtonText:(NSString*)rateLaterButtonText
+               rateNeverButtonText:(NSString*)rateNeverButtonText
 {
-    BOOL appRatingDisabled = [[NSUserDefaults standardUserDefaults] boolForKey:@"app_rating_disabled"];
-    NSInteger numberOfTimesLaunched = [[NSUserDefaults standardUserDefaults] integerForKey:@"number_of_times_launched"] + 1;
+    NSLog(@"RateThisAppDialog :: threeButtonLayoutWithTitle:%@ message:%@ rateNowButtonText:%@ rateLaterButtonText:%@ rateNeverButtonText:%@", title, message, rateNowButtonText, rateLaterButtonText, rateNeverButtonText);
     
-    #ifdef DEBUG
+    RateThisAppDialog *rateThisAppDialog = [[RateThisAppDialog alloc] init];
     
-    NSString *debugMessage = [NSString stringWithFormat:@"Launches: %i", numberOfTimesLaunched];
+    // configure action handlers
+    rateThisAppDialog->alertViewIndexOne = rateThisAppDialog->_rateLaterDefault;
+    rateThisAppDialog->alertViewIndexTwo = rateThisAppDialog->_rateNowDefault;
+    rateThisAppDialog->alertViewIndexThree = rateThisAppDialog->_rateNeverDefault;
     
-    UIAlertView *alert = [[UIAlertView alloc]
-                          initWithTitle: @"DEBUG INFO"
-                          message: debugMessage
-                          delegate: nil
-                          cancelButtonTitle:@"Close"
-                          otherButtonTitles:nil];
-    
-    [alert show];
-    [alert release];
-    
-    #endif
-    
-    if (appRatingDisabled == YES)
-        return;
-    
-    // possibly store an override for "after_x_launches" in the defaults collection after prompting to rate the app later?
-    
-    if (numberOfTimesLaunched >= PROMPT_AFTER_X_LAUNCHES)
+    if (rateThisAppDialog->_shouldShowDialogDefault() == YES)
     {
-        #ifdef VERTICAL_LAYOUT
+        NSLog(@"RateThisAppDialog :: showing alert view");
         
         UIAlertView *alert = [[UIAlertView alloc]
-                              initWithTitle: ALERT_TITLE
-                              message: ALERT_TEXT
-                              delegate: self
-                              cancelButtonTitle:ALERT_BUTTON_1_TEXT
-                              otherButtonTitles:ALERT_BUTTON_2_TEXT, ALERT_BUTTON_3_TEXT, nil];
-
-        #else
-        
-        UIAlertView *alert = [[UIAlertView alloc]
-                              initWithTitle: ALERT_TITLE
-                              message: ALERT_TEXT
-                              delegate: self
-                              cancelButtonTitle:ALERT_BUTTON_1_TEXT
-                              otherButtonTitles:ALERT_BUTTON_2_TEXT, nil];
-        
-        #endif
+                              initWithTitle: title
+                              message: message
+                              delegate: rateThisAppDialog
+                              cancelButtonTitle:rateLaterButtonText
+                              otherButtonTitles:rateNowButtonText, rateNeverButtonText, nil];
+    
+        NSLog(@"RateThisAppDialog :: releasing alert view");
         
         [alert show];
         [alert release];
     }
-    
-    [[NSUserDefaults standardUserDefaults] setInteger:numberOfTimesLaunched forKey:@"number_of_times_launched"];
-    [[NSUserDefaults standardUserDefaults] synchronize];
+
+    // instead i will release this object when the "alertView:clickedButtonAtIndex:" delegate function is called. i think
+    // that means if the user closes the app while the alert view is showing this object will be leaked, but i dont have
+    // a better solution right now.
+    // [rateThisAppDialog autorelease];
 }
 
-+ (void)rateNow
++ (void)twoButtonLayoutWithTitle:(NSString*)title
+                         message:(NSString*)message
+                   rateNowButtonText:(NSString*)rateNowButtonText
+                   rateNeverButtonText:(NSString*)rateNeverButtonText
 {
-    NSURL *url = [NSURL URLWithString:APP_STORE_LINK];
+    NSLog(@"RateThisAppDialog :: threeButtonLayoutWithTitle:%@ message:%@ rateNowButtonText:%@ rateNeverButtonText:%@", title, message, rateNowButtonText, rateNeverButtonText);
     
-    BOOL launchSuccess = [[UIApplication sharedApplication] openURL:url];
+    RateThisAppDialog *rateThisAppDialog = [[RateThisAppDialog alloc] init];
+
+    // configure action handlers
+    rateThisAppDialog->alertViewIndexOne = rateThisAppDialog->_rateNowDefault;
+    rateThisAppDialog->alertViewIndexThree = rateThisAppDialog->_rateNeverDefault;
     
-    if(launchSuccess == NO)
+    if (rateThisAppDialog->_shouldShowDialogDefault() == YES)
     {
-        NSLog(@"Failed to open URL (this is normal in the iSO Simulator ...)");
+        NSLog(@"RateThisAppDialog :: showing alert view");
+        
+        UIAlertView *alert = [[UIAlertView alloc]
+                              initWithTitle: title
+                              message: message
+                              delegate: rateThisAppDialog
+                              cancelButtonTitle:rateNeverButtonText
+                              otherButtonTitles:rateNowButtonText, nil];
+        
+        NSLog(@"RateThisAppDialog :: releasing alert view");
+        
+        [alert show];
+        [alert release];
     }
 
-    [[NSUserDefaults standardUserDefaults] setBool:YES forKey:@"app_rating_disabled"];
-    [[NSUserDefaults standardUserDefaults] synchronize];
-}
-
-+ (void)rateLater
-{
-    // set back to zero
-    [[NSUserDefaults standardUserDefaults] setInteger:0 forKey:@"number_of_times_launched"];
-    [[NSUserDefaults standardUserDefaults] synchronize];
-}
-
-+ (void)rateNever
-{
-    [[NSUserDefaults standardUserDefaults] setBool:YES forKey:@"app_rating_disabled"];
-    [[NSUserDefaults standardUserDefaults] synchronize];
+    // instead i will release this object when the "alertView:clickedButtonAtIndex:" delegate function is called. i think
+    // that means if the user closes the app while the alert view is showing this object will be leaked, but i dont have
+    // a better solution right now.
+    // [rateThisAppDialog autorelease];
 }
 
 @end

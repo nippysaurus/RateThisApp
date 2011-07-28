@@ -2,7 +2,7 @@
 //  RateThisAppAppDelegate.m
 //  RateThisApp
 //
-//  Created by Michael Dawson on 23/06/11.
+//  Created by Michael Dawson on 29/07/11.
 //  Copyright 2011 Nippysaurus. All rights reserved.
 //
 
@@ -22,8 +22,12 @@
     self.window.rootViewController = self.viewController;
     [self.window makeKeyAndVisible];
     
-    [[RateThisAppDialog alloc] init];
-    
+    [RateThisAppDialog threeButtonLayoutWithTitle:@"title"
+                                          message:@"message"
+                                rateNowButtonText:@"now"
+                              rateLaterButtonText:@"later"
+                              rateNeverButtonText:@"never"];
+
     return YES;
 }
 

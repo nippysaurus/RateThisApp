@@ -2,7 +2,7 @@
 //  RateThisAppDialog.h
 //  RateThisApp
 //
-//  Created by Michael Dawson on 23/06/11.
+//  Created by Michael Dawson on 29/07/11.
 //  Copyright 2011 Nippysaurus. All rights reserved.
 //
 
@@ -16,29 +16,31 @@
 
 // this is how many times your app can launch before showing this dialog
 // ie. setting this to 2 will cause the dialog to appear on the second time the app is launched
-#define PROMPT_AFTER_X_LAUNCHES 2
+#define PROMPT_AFTER_X_LAUNCHES 1
 
-// title that appears at the top of the alert window
-#define ALERT_TITLE @"Review Kinetic"
-// text which appears under the title of the alert window
-#define ALERT_TEXT @"Thank you for using Kinetic. Please take a moment to rate and review us on the App Store."
+@interface RateThisAppDialog : NSObject {
+    
+    @public
+    
+    void (^_rateNowDefault)(void);
+    void (^_rateLaterDefault)(void);
+    void (^_rateNeverDefault)(void);
+    BOOL (^_shouldShowDialogDefault)(void);
+    
+    void (^alertViewIndexOne)(void);
+    void (^alertViewIndexTwo)(void);
+    void (^alertViewIndexThree)(void);
+}
 
-// button 1 (top, or left for vertical) text
-#define ALERT_BUTTON_1_TEXT @"Yes"
-// button 2 (middle, or right for vertical) text
-#define ALERT_BUTTON_2_TEXT @"Not Now"
-// button 3 (bottom, or not used for vertical) text
-#define ALERT_BUTTON_3_TEXT @"No, don't ask again"
++ (void)threeButtonLayoutWithTitle:(NSString*)title
+                           message:(NSString*)message
+                 rateNowButtonText:(NSString*)rateNowButtonText
+               rateLaterButtonText:(NSString*)rateLaterButtonText
+               rateNeverButtonText:(NSString*)rateNeverButtonText;
 
-#define ALERT_BUTTON_1_ACTION @"RATE_NOW"
-#define ALERT_BUTTON_2_ACTION @"RATE_LATER"
-#define ALERT_BUTTON_3_ACTION @"RATE_NEVER"
-
-// set this to true if there are three values set
-//#define VERTICAL_LAYOUT
-
-@interface RateThisAppDialog : NSObject
-
-
++ (void)twoButtonLayoutWithTitle:(NSString*)title
+                         message:(NSString*)message
+               rateNowButtonText:(NSString*)rateNowButtonText
+             rateNeverButtonText:(NSString*)rateNeverButtonText;
 
 @end
